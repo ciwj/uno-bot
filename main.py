@@ -1,5 +1,9 @@
 import os
+import asyncio
+import discord
 
+from random import randrange
+from discord.utils import get
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -10,8 +14,26 @@ GUILD = os.getenv('DISCORD_GUILD')
 description = "i'm bored as shit"
 inLobby = False
 inGame = False
-requiredPlayers = 3
-playerList = {}
+requiredPlayers = 1
+playerIDs = []
+playerNames = []
+decks = {}
+playerRoles = [
+    712762141807214616, 712762174702878766, 712762203312226396, 712762244089249924, 712762266801537095,
+    712762327530733650, 712762355653804080, 712762372300996700, 712762398494163068, 712762416219422760
+]
+cards = [
+    ('Red 0', 0, 0), ('Red 1', 0, 1), ('Red 1', 0, 1), ('Red 2', 0, 2), ('Red 2', 0, 2), ('Red 3', 0, 3), ('Red 3', 0, 3), ('Red 4', 0, 4), ('Red 4', 0, 4), ('Red 5', 0, 5), ('Red 5', 0, 5), ('Red 6', 0, 6), ('Red 6', 0, 6), ('Red 7', 0, 7), ('Red 7', 0, 7), ('Red 8', 0, 8), ('Red 8', 0, 8), ('Red 9', 0, 9), ('Red 9', 0, 9),
+    ('Red Draw 2', 0, 10), ('Red Draw 2', 0, 10), ('Red Skip', 0, 11), ('Red Skip', 0, 11), ('Red Reverse', 0, 12), ('Red Reverse', 0, 12),
+    ('Green 0', 1, 0), ('Green 1', 1, 1), ('Green 1', 1, 1), ('Green 2', 1, 2), ('Green 2', 1, 2), ('Green 3', 1, 3), ('Green 3', 1, 3), ('Green 4', 1, 4), ('Green 4', 1, 4), ('Green 5', 1, 5), ('Green 5', 1, 5), ('Green 6', 1, 6), ('Green 6', 1, 6), ('Green 7', 1, 7), ('Green 7', 1, 7), ('Green 8', 1, 8), ('Green 8', 1, 8), ('Green 9', 1, 9), ('Green 9', 1, 9),
+    ('Green Draw 2', 1, 10), ('Green Draw 2', 1, 10), ('Green Skip', 1, 11), ('Green Skip', 1, 11), ('Green Reverse', 1, 12), ('Green Reverse', 1, 12),
+    ('Yellow 0', 2, 0), ('Yellow 1', 2, 1), ('Yellow 1', 2, 1), ('Yellow 2', 2, 2), ('Yellow 2', 2, 2), ('Yellow 3', 2, 3), ('Yellow 3', 2, 3), ('Yellow 4', 2, 4), ('Yellow 4', 2, 4), ('Yellow 5', 2, 5), ('Yellow 5', 2, 5), ('Yellow 6', 2, 6), ('Yellow 6', 2, 6), ('Yellow 7', 2, 7), ('Yellow 7', 2, 7), ('Yellow 8', 2, 8), ('Yellow 8', 2, 8), ('Yellow 9', 2, 9), ('Yellow 9', 2, 9),
+    ('Yellow Draw 2', 2, 10), ('Yellow Draw 2', 2, 10), ('Yellow Skip', 2, 11), ('Yellow Skip', 2, 11), ('Yellow Reverse', 2, 12), ('Yellow Reverse', 2, 12),
+    ('Blue 0', 3, 0), ('Blue 1', 3, 1), ('Blue 1', 3, 1), ('Blue 2', 3, 2), ('Blue 2', 3, 2), ('Blue 3', 3, 3), ('Blue 3', 3, 3), ('Blue 4', 3, 4), ('Blue 4', 3, 4), ('Blue 5', 3, 5), ('Blue 5', 3, 5), ('Blue 6', 3, 6), ('Blue 6', 3, 6), ('Blue 7', 3, 7), ('Blue 7', 3, 7), ('Blue 8', 3, 8), ('Blue 8', 3, 8), ('Blue 9', 3, 9), ('Blue 9', 3, 9),
+    ('Blue Draw 2', 3, 10), ('Blue Draw 2', 3, 10), ('Blue Skip', 3, 11), ('Blue Skip', 3, 11), ('Blue Reverse', 3, 12), ('Blue Reverse', 3, 12),
+    ('Wild Card', 4, 13), ('Wild Card', 4, 13), ('Wild Card', 4, 13), ('Wild Card', 4, 13),
+    ('Wild Draw 4', 4, 14), ('Wild Draw 4', 4, 14), ('Wild Draw 4', 4, 14), ('Wild Draw 4', 4, 14)
+    ]
 
 
 class Error(Exception):
@@ -42,6 +64,11 @@ class notInGameException(Error):
 bot = commands.Bot(command_prefix='!', description=description, case_insensitive=True)
 
 
+def randcard():
+    cardNum = randrange(0, 108)
+    card = cards[cardNum]
+    return card
+
 @bot.event
 async def on_ready():
     print("-------------\nWe're in, bitches\n-------------\n")
@@ -49,12 +76,12 @@ async def on_ready():
 
 @bot.command(pass_context=True)
 async def lobby(ctx):
-    global inLobby
-    global playerList
-
+    global inLobby, playerIDs, playerNames
+    
     # await ctx.message.delete()
     inLobby = True
-    playerList[ctx.message.author.id] = ctx.message.author.display_name
+    playerIDs.append(ctx.message.author.id)
+    playerNames.append(ctx.message.author.display_name)
     print('Trying to start game.')
     print('user ID ' + str(ctx.message.author.id) + ' added to players.')
     await ctx.send('@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
@@ -64,13 +91,14 @@ async def lobby(ctx):
 async def join(ctx):
     try:
         # await ctx.message.delete()
-        global playerList
+        global playerIDs, playerNames
         if not inLobby:
             raise noLobbyException
-        if ctx.message.author.id in playerList:
+        if ctx.message.author.id in playerIDs:
             raise alreadyJoinedException
 
-        playerList[ctx.message.author.id] = ctx.message.author.display_name
+        playerIDs.append(ctx.message.author.id)
+        playerNames.append(ctx.message.author.display_name)
         print('user ID ' + str(ctx.message.author.id) + ' added to players.')
         await ctx.send(ctx.message.author.display_name + ' has joined the game!')
     except noLobbyException:
@@ -85,12 +113,12 @@ async def join(ctx):
 async def yeetlobby(ctx):
     try:
         # await ctx.message.delete()
-        global inLobby, playerList
+        global inLobby, playerIDs, playerNames
         if not inLobby:
             raise noLobbyException
 
-        del playerList
-        playerList = {}
+        playerIDs = []
+        playerNames = []
         inLobby = False
         print('Yeeting lobby.')
         await ctx.send(ctx.message.author.display_name + ' has yote the lobby!')
@@ -107,7 +135,7 @@ async def players(ctx):
             raise noLobbyException
         print("Listing players.")
         await ctx.send("Players:")
-        for player in playerList.values():
+        for player in playerNames.values():
             print(player)
             await ctx.send(player)
     except noLobbyException:
@@ -118,16 +146,31 @@ async def players(ctx):
 @bot.command(pass_context=True)
 async def start(ctx):
     try:
-        global inGame, inLobby
+        global inGame, inLobby, decks
         if not inLobby:
             raise noLobbyException
-        if len(playerList) < requiredPlayers:
+        if len(playerIDs) < requiredPlayers:
             raise notEnoughPlayersException
 
         inLobby = False
         inGame = True
         await ctx.send('Starting game!')
         print('Starting game.')
+        i = 0
+        #Deal cards
+        for playerID in playerIDs:
+            i += 1
+            member = await commands.MemberConverter().convert(ctx, str(playerID))
+            role = get(member.guild.roles, name=("Player " + str(i)))
+
+            await member.add_roles(role)
+            decks[playerID] = set()
+            for x in range(7):
+                card = randcard()
+                decks[playerID].add(card)
+        
+        while inGame:
+            await asyncio.sleep(1)
     except noLobbyException:
         print(ctx.message.author.display_name + ' tried starting a game without a lobby.')
         await ctx.send('No lobby created!')
@@ -139,12 +182,19 @@ async def start(ctx):
 @bot.command(pass_context=True)
 async def forceStop(ctx):
     try:
-        global inGame, playerList
+        global inGame, playerNames, playerIDs, decks
         if not inGame:
             raise notInGameException
 
-        del playerList
-        playerList = {}
+        i = 0
+        for playerID in playerIDs:
+            i += 1
+            member = await commands.MemberConverter().convert(ctx, str(playerID))
+            role = get(member.guild.roles, name=("Player " + str(i)))
+            await member.remove_roles(role)
+        playerIDs = []
+        decks = {}
+        playerNames = []
         inGame = False
         await ctx.send('Stopping game!')
         print('Stopping game.')
