@@ -2,7 +2,7 @@ import os
 import asyncio
 import discord
 
-from random import randrange
+from random import randrange, choice
 from discord.utils import get
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -14,10 +14,17 @@ GUILD = os.getenv('DISCORD_GUILD')
 description = "i'm bored as shit"
 inLobby = False
 inGame = False
+isReverse = False
 requiredPlayers = 1
 playerIDs = []
 playerNames = []
 decks = {}
+turn = 0
+lastCard = ()
+channels = [
+    712763747315220561, 712763764922908794, 712763848133836870, 712763863384457256, 712763878643073065,
+    712763898356564048, 712763914747904091, 712763929020858438, 712763945525575700, 712763957852504197
+]
 cards = [
     ('Red 0', 0, 0), ('Red 1', 0, 1), ('Red 1', 0, 1), ('Red 2', 0, 2), ('Red 2', 0, 2), ('Red 3', 0, 3),
     ('Red 3', 0, 3), ('Red 4', 0, 4), ('Red 4', 0, 4), ('Red 5', 0, 5), ('Red 5', 0, 5), ('Red 6', 0, 6),
@@ -40,6 +47,23 @@ cards = [
     ('Blue Draw 2', 3, 10), ('Blue Skip', 3, 11), ('Blue Skip', 3, 11), ('Blue Reverse', 3, 12),
     ('Blue Reverse', 3, 12), ('Wild Card', 4, 13), ('Wild Card', 4, 13), ('Wild Card', 4, 13), ('Wild Card', 4, 13),
     ('Wild Draw 4', 4, 14), ('Wild Draw 4', 4, 14), ('Wild Draw 4', 4, 14), ('Wild Draw 4', 4, 14)
+]
+startCards = [
+    ('Red 0', 0, 0), ('Red 1', 0, 1), ('Red 1', 0, 1), ('Red 2', 0, 2), ('Red 2', 0, 2), ('Red 3', 0, 3),
+    ('Red 3', 0, 3), ('Red 4', 0, 4), ('Red 4', 0, 4), ('Red 5', 0, 5), ('Red 5', 0, 5), ('Red 6', 0, 6),
+    ('Red 6', 0, 6), ('Red 7', 0, 7), ('Red 7', 0, 7), ('Red 8', 0, 8), ('Red 8', 0, 8), ('Red 9', 0, 9),
+    ('Red 9', 0, 9), ('Green 0', 1, 0), ('Green 1', 1, 1), ('Green 1', 1, 1),
+    ('Green 2', 1, 2), ('Green 2', 1, 2), ('Green 3', 1, 3), ('Green 3', 1, 3), ('Green 4', 1, 4), ('Green 4', 1, 4),
+    ('Green 5', 1, 5), ('Green 5', 1, 5), ('Green 6', 1, 6), ('Green 6', 1, 6), ('Green 7', 1, 7), ('Green 7', 1, 7),
+    ('Green 8', 1, 8), ('Green 8', 1, 8), ('Green 9', 1, 9), ('Green 9', 1, 9),
+    ('Yellow 0', 2, 0), ('Yellow 1', 2, 1), ('Yellow 1', 2, 1), ('Yellow 2', 2, 2),
+    ('Yellow 2', 2, 2), ('Yellow 3', 2, 3), ('Yellow 3', 2, 3), ('Yellow 4', 2, 4), ('Yellow 4', 2, 4),
+    ('Yellow 5', 2, 5), ('Yellow 5', 2, 5), ('Yellow 6', 2, 6), ('Yellow 6', 2, 6), ('Yellow 7', 2, 7),
+    ('Yellow 7', 2, 7), ('Yellow 8', 2, 8), ('Yellow 8', 2, 8), ('Yellow 9', 2, 9), ('Yellow 9', 2, 9),
+    ('Blue 0', 3, 0), ('Blue 1', 3, 1), ('Blue 1', 3, 1),
+    ('Blue 2', 3, 2), ('Blue 2', 3, 2), ('Blue 3', 3, 3), ('Blue 3', 3, 3), ('Blue 4', 3, 4), ('Blue 4', 3, 4),
+    ('Blue 5', 3, 5), ('Blue 5', 3, 5), ('Blue 6', 3, 6), ('Blue 6', 3, 6), ('Blue 7', 3, 7), ('Blue 7', 3, 7),
+    ('Blue 8', 3, 8), ('Blue 8', 3, 8), ('Blue 9', 3, 9), ('Blue 9', 3, 9)
 ]
 
 
@@ -71,7 +95,7 @@ class notInGameException(Error):
 bot = commands.Bot(command_prefix='!', description=description, case_insensitive=True)
 
 
-def randcard():
+def randCard():
     cardNum = randrange(0, 108)
     card = cards[cardNum]
     return card
@@ -155,7 +179,7 @@ async def players(ctx):
 @bot.command(pass_context=True)
 async def start(ctx):
     try:
-        global inGame, inLobby, decks
+        global inGame, inLobby, decks, lastCard
         if not inLobby:
             raise noLobbyException
         if len(playerIDs) < requiredPlayers:
@@ -166,18 +190,28 @@ async def start(ctx):
         await ctx.send('Starting game!')
         print('Starting game.')
         i = 0
-        # Deal cards
+
         for playerID in playerIDs:
+            # Give role
             i += 1
             member = await commands.MemberConverter().convert(ctx, str(playerID))
             role = get(member.guild.roles, name=("Player " + str(i)))
 
-            await member.add_roles(role)
-            decks[playerID] = set()
-            for x in range(7):
-                card = randcard()
-                decks[playerID].add(card)
+            # Deal cards
+            channel = bot.get_channel(channels[i - 1])
+            await channel.send("**Your cards**:")
 
+            await member.add_roles(role)
+            decks[playerID] = []
+            for x in range(7):
+                card = randCard()
+                decks[playerID].append(card)
+                await channel.send(card[0])
+        
+        lastCard = choice(startCards)
+        await ctx.send('**First Card**:')
+        await ctx.send(lastCard[0])
+        
         while inGame:
             await asyncio.sleep(1)
     except noLobbyException:
@@ -186,6 +220,20 @@ async def start(ctx):
     except notEnoughPlayersException:
         print(ctx.message.author.display_name + ' tried starting a game without enough players.')
         await ctx.send('Not enough players!')
+
+
+@bot.command(pass_context=True)
+async def play(ctx, cardNo: int):
+    try:
+        global decks, lastCard
+        if decks[ctx.author.id][cardNo-1][1] == lastCard[1] or decks[ctx.author.id][cardNo-1][2] == lastCard[2] or decks[ctx.author.id][cardNo-1][1] == 4:
+            await ctx.send('Card played: ' + decks[ctx.author.id][cardNo-1][0])
+            lastCard = decks[ctx.author.id][cardNo-1]
+        else:
+            print('Card cannot be played.')
+            await ctx.send('Try another card, basard')
+    except:
+        pass
 
 
 @bot.command(pass_context=True)
