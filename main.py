@@ -14,7 +14,7 @@ inLobby = False
 inGame = False
 isReverse = False
 toDraw = 0
-requiredPlayers = 1
+requiredPlayers = 2
 playerIDs = []
 playerNames = []
 decks = {}
@@ -112,7 +112,7 @@ def randCard():
 
 
 async def stopEverything(ctx):
-    global playerIDs, decks, playerNames, inGame
+    global playerIDs, decks, playerNames, inGame, turn, isReverse, lastCard, toDraw
     i = 0
     for playerID in playerIDs:
         i += 1
@@ -122,11 +122,27 @@ async def stopEverything(ctx):
     playerIDs = []
     decks = {}
     playerNames = []
+    turn = 0
+    lastCard = []
+    toDraw = 0
+    isReverse = False
     inGame = False
 
 
 def isTurn(ctx):
     return ctx.message.author.id == playerIDs[turn]
+
+
+async def displayCards(ctx):
+    playerNo = playerIDs.index(ctx.author.id)
+    channel = bot.get_channel(channels[playerNo])
+    await channel.purge(limit=50)
+    msg = "**Your cards**:\n"
+    i = 1
+    for card in decks[ctx.author.id]:
+        msg = msg + str(i) + ': ' + card[0] + '\n'
+        i += 1
+    await channel.send(msg)
 
 
 @bot.event
@@ -233,13 +249,14 @@ async def start(ctx):
             channel = bot.get_channel(channels[i - 1])
             await channel.purge(limit=50)
 
-            await channel.send("**Your cards**:")
             await member.add_roles(role)
             decks[playerID] = []
+            msg = '**Your cards**:\n'
             for x in range(7):
                 card = randCard()
                 decks[playerID].append(card)
-                await channel.send(str(x + 1) + ': ' + card[0])
+                msg = msg + str(x + 1) + ': ' + card[0] + '\n'
+            await channel.send(msg)
 
         lastCard = choice(startCards)
         await ctx.send('**First Card**:')
@@ -256,14 +273,17 @@ async def start(ctx):
 @bot.command(pass_context=True)
 async def play(ctx, cardNo: int):
     try:
-        global decks, lastCard, turn, playerIDs, colours
+        global decks, lastCard, turn, playerIDs, colours, toDraw, isReverse
         if not isTurn(ctx):
             raise notTurnException
+        # If card is valid
         if decks[ctx.author.id][cardNo - 1][1] == lastCard[1] or decks[ctx.author.id][cardNo - 1][2] == lastCard[2] or \
                 decks[ctx.author.id][cardNo - 1][1] == 4:
+
             await ctx.send('Card played: ' + decks[ctx.author.id][cardNo - 1][0])
             lastCard = decks[ctx.author.id][cardNo - 1]
 
+            # Check win condition
             if len(decks[ctx.author.id]) == 0:
                 member = ctx.author
                 role = get(member.guild.roles, name="Uno God")
@@ -274,6 +294,37 @@ async def play(ctx, cardNo: int):
                 await ctx.send('Type !lobby to start another game.')
                 await stopEverything(ctx)
 
+            # Set card abilities
+            if decks[ctx.author.id][cardNo - 1][1] == 10:
+                toDraw = 2
+                if isReverse:
+                    turn -= 1
+                else:
+                    turn += 1
+            elif decks[ctx.author.id][cardNo - 1][1] == 11:
+                if isReverse:
+                    turn -= 2
+                else:
+                    turn += 2
+            elif decks[ctx.author.id][cardNo - 1][1] == 12:
+                isReverse = not isReverse
+                if isReverse:
+                    turn -= 1
+                else:
+                    turn += 1
+            elif decks[ctx.author.id][cardNo - 1][1] == 14:
+                toDraw = 4
+                if isReverse:
+                    turn -= 1
+                else:
+                    turn += 1
+            else:
+                if isReverse:
+                    turn -= 1
+                else:
+                    turn += 1
+
+            # Deal with wildcards
             if decks[ctx.author.id][cardNo - 1][1] == 4:
                 await ctx.send('What colour should be played next?')
 
@@ -287,15 +338,35 @@ async def play(ctx, cardNo: int):
                 lastCard[2] = colours.index(msg.content.lower())
                 await ctx.send('Next card should now be: **' + str(colours[lastCard[2]]).capitalize() + '**')
 
+            # Check turns
+            if turn < 0:
+                turn += len(playerIDs)
+            if turn > (len(playerIDs) - 1):
+                turn -= len(playerIDs)
+
             del decks[ctx.author.id][cardNo - 1]
-            playerNo = playerIDs.index(ctx.author.id)
-            channel = bot.get_channel(channels[playerNo])
-            await channel.purge(limit=50)
-            await channel.send("**Your cards**:")
-            i = 1
-            for card in decks[ctx.author.id]:
-                await channel.send(str(i) + ': ' + card[0])
-                i += 1
+            await displayCards(ctx)
+
+            # Draw cards
+            if toDraw != 0:
+                for x in range(toDraw):
+                    card = randCard()
+                    decks[playerIDs[turn]].append(card)
+                print(str(toDraw) + ' cards drawn for ' + str(playerIDs[turn]))
+                if isReverse:
+                    turn -= 1
+                else:
+                    turn += 1
+                toDraw = 0
+
+                # Check turns
+                if turn < 0:
+                    turn += len(playerIDs)
+                if turn > (len(playerIDs) - 1):
+                    turn -= len(playerIDs)
+
+            member = await commands.MemberConverter().convert(ctx, str(playerIDs[turn]))
+            await ctx.send("It's now " + member.display_name + "'s turn!")
 
         else:
             print('Card cannot be played.')
@@ -316,14 +387,7 @@ async def draw(ctx):
         print(str(ctx.author.id) + " is drawing a card")
         card = randCard()
         decks[ctx.author.id].append(card)
-        playerNo = playerIDs.index(ctx.author.id)
-        channel = bot.get_channel(channels[playerNo])
-        await channel.purge(limit=50)
-        await channel.send("**Your cards**:")
-        i = 1
-        for card in decks[ctx.author.id]:
-            await channel.send(str(i) + ': ' + card[0])
-            i += 1
+        await displayCards(ctx)
     except notTurnException:
         await ctx.send("It's not your turn, greedy bitchard")
         print('Not correct turn.')
