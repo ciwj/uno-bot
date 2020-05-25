@@ -172,7 +172,7 @@ async def yeetlobby(ctx):
 @bot.command(pass_context=True)
 async def players(ctx):
     try:
-        if not inLobby or not inGame:
+        if not inLobby and not inGame:
             raise noLobbyException
         print("Listing players.")
         await ctx.send("Players:")
@@ -231,11 +231,18 @@ async def start(ctx):
 @bot.command(pass_context=True)
 async def play(ctx, cardNo: int):
     try:
-        global decks, lastCard, turn
+        global decks, lastCard, turn, playerIDs
         if decks[ctx.author.id][cardNo-1][1] == lastCard[1] or decks[ctx.author.id][cardNo-1][2] == lastCard[2] or decks[ctx.author.id][cardNo-1][1] == 4:
             await ctx.send('Card played: ' + decks[ctx.author.id][cardNo-1][0])
             lastCard = decks[ctx.author.id][cardNo-1]
             del decks[ctx.author.id][cardNo-1]
+
+            playerNo = playerIDs.index(ctx.author.id)
+            channel = bot.get_channel(channels[playerNo])
+            await channel.purge(limit=50)
+            await channel.send("**Your cards**:")
+            for card in decks[ctx.author.id]:
+                await channel.send(card[0])
         else:
             print('Card cannot be played.')
             await ctx.send('Try another card, basard')
@@ -247,8 +254,15 @@ async def play(ctx, cardNo: int):
 async def draw(ctx):
     try:
         global decks
+        print(ctx.author.id + " is drawing a card")
         card = randCard()
         decks[ctx.author.id].append[card]
+        playerNo = playerIDs.index(ctx.author.id)
+        channel = bot.get_channel(channels[playerNo])
+        await channel.purge(limit=50)
+        await channel.send("**Your cards**:")
+        for card in decks[ctx.author.id]:
+            await channel.send(card[0])
     except:
         pass
 
