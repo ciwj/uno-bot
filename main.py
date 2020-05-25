@@ -1,6 +1,4 @@
 import os
-import asyncio
-import discord
 
 from random import randrange, choice
 from discord.utils import get
@@ -92,6 +90,7 @@ class notInGameException(Error):
     """Raised when a command is run while not in game"""
     pass
 
+
 class alreadyInGameException(Error):
     """Raised when a player tries to start a second lobby"""
     pass
@@ -104,6 +103,20 @@ def randCard():
     cardNum = randrange(0, 108)
     card = cards[cardNum]
     return card
+
+
+async def stopEverything(ctx):
+    global playerIDs, decks, playerNames, inGame
+    i = 0
+    for playerID in playerIDs:
+        i += 1
+        member = await commands.MemberConverter().convert(ctx, str(playerID))
+        role = get(member.guild.roles, name=("Player " + str(i)))
+        await member.remove_roles(role)
+    playerIDs = []
+    decks = {}
+    playerNames = []
+    inGame = False
 
 
 @bot.event
@@ -123,7 +136,8 @@ async def lobby(ctx):
         playerNames.append(ctx.message.author.display_name)
         print('Trying to start game.')
         print('user ID ' + str(ctx.message.author.id) + ' added to players.')
-        await ctx.send('@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
+        await ctx.send(
+            '@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
     except alreadyInGameException:
         await ctx.send("There's already a lobby you bastard")
     except:
@@ -215,8 +229,8 @@ async def start(ctx):
             for x in range(7):
                 card = randCard()
                 decks[playerID].append(card)
-                await channel.send(str(x + 1) +': ' + card[0])
-        
+                await channel.send(str(x + 1) + ': ' + card[0])
+
         lastCard = choice(startCards)
         await ctx.send('**First Card**:')
         await ctx.send(lastCard[0])
@@ -233,10 +247,21 @@ async def start(ctx):
 async def play(ctx, cardNo: int):
     try:
         global decks, lastCard, turn, playerIDs
-        if decks[ctx.author.id][cardNo-1][1] == lastCard[1] or decks[ctx.author.id][cardNo-1][2] == lastCard[2] or decks[ctx.author.id][cardNo-1][1] == 4:
-            await ctx.send('Card played: ' + decks[ctx.author.id][cardNo-1][0])
-            lastCard = decks[ctx.author.id][cardNo-1]
-            del decks[ctx.author.id][cardNo-1]
+        if decks[ctx.author.id][cardNo - 1][1] == lastCard[1] or decks[ctx.author.id][cardNo - 1][2] == lastCard[2] or \
+                decks[ctx.author.id][cardNo - 1][1] == 4:
+            await ctx.send('Card played: ' + decks[ctx.author.id][cardNo - 1][0])
+            lastCard = decks[ctx.author.id][cardNo - 1]
+            del decks[ctx.author.id][cardNo - 1]
+
+            if len(decks[ctx.author.id]) == 0:
+                member = ctx.author
+                role = get(member.guild.roles, name=("Uno God"))
+                last_member = role.members[0]
+                await last_member.remove_roles(role)
+                await member.add_roles(role)
+                await ctx.send('**' + str(ctx.author) + ' is the supreme uno God!**')
+                await ctx.send('Type !lobby to start another game.')
+                await stopEverything(ctx)
 
             playerNo = playerIDs.index(ctx.author.id)
             channel = bot.get_channel(channels[playerNo])
@@ -244,13 +269,14 @@ async def play(ctx, cardNo: int):
             await channel.send("**Your cards**:")
             i = 1
             for card in decks[ctx.author.id]:
-                await channel.send(str(i) +': ' + card[0])
+                await channel.send(str(i) + ': ' + card[0])
                 i += 1
+
         else:
             print('Card cannot be played.')
             await ctx.send('Try another card, basard')
-    except:
-        pass
+    except Exception as e:
+        print(e)
 
 
 @bot.command(pass_context=True)
@@ -266,7 +292,7 @@ async def draw(ctx):
         await channel.send("**Your cards**:")
         i = 1
         for card in decks[ctx.author.id]:
-            await channel.send(str(i) +': ' + card[0])
+            await channel.send(str(i) + ': ' + card[0])
             i += 1
     except:
         pass
@@ -279,16 +305,8 @@ async def forceStop(ctx):
         if not inGame:
             raise notInGameException
 
-        i = 0
-        for playerID in playerIDs:
-            i += 1
-            member = await commands.MemberConverter().convert(ctx, str(playerID))
-            role = get(member.guild.roles, name=("Player " + str(i)))
-            await member.remove_roles(role)
-        playerIDs = []
-        decks = {}
-        playerNames = []
-        inGame = False
+        await stopEverything(ctx)
+
         await ctx.send('Stopping game!')
         print('Stopping game.')
     except notInGameException:
