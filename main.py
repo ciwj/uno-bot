@@ -97,6 +97,11 @@ class alreadyInGameException(Error):
     pass
 
 
+class notTurnException(Error):
+    """Raised when a player tries running a command when it isn't their turn"""
+    pass
+
+
 bot = commands.Bot(command_prefix='!', description=description, case_insensitive=True)
 
 
@@ -118,6 +123,10 @@ async def stopEverything(ctx):
     decks = {}
     playerNames = []
     inGame = False
+
+
+def isTurn(ctx):
+    return ctx.message.author.id == playerIDs[turn]
 
 
 @bot.event
@@ -248,6 +257,8 @@ async def start(ctx):
 async def play(ctx, cardNo: int):
     try:
         global decks, lastCard, turn, playerIDs, colours
+        if not isTurn(ctx):
+            raise notTurnException
         if decks[ctx.author.id][cardNo - 1][1] == lastCard[1] or decks[ctx.author.id][cardNo - 1][2] == lastCard[2] or \
                 decks[ctx.author.id][cardNo - 1][1] == 4:
             await ctx.send('Card played: ' + decks[ctx.author.id][cardNo - 1][0])
@@ -289,6 +300,9 @@ async def play(ctx, cardNo: int):
         else:
             print('Card cannot be played.')
             await ctx.send('Try another card, basard')
+    except notTurnException:
+        await ctx.send("It's not your turn, greedy bitchard")
+        print('Not correct turn.')
     except Exception as e:
         print(e)
 
@@ -297,6 +311,8 @@ async def play(ctx, cardNo: int):
 async def draw(ctx):
     try:
         global decks, channels, playerIDs
+        if not isTurn(ctx):
+            raise notTurnException
         print(str(ctx.author.id) + " is drawing a card")
         card = randCard()
         decks[ctx.author.id].append(card)
@@ -308,6 +324,9 @@ async def draw(ctx):
         for card in decks[ctx.author.id]:
             await channel.send(str(i) + ': ' + card[0])
             i += 1
+    except notTurnException:
+        await ctx.send("It's not your turn, greedy bitchard")
+        print('Not correct turn.')
     except Exception as e:
         print(e)
 
