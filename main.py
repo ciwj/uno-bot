@@ -65,6 +65,7 @@ startCards = [
     ('Blue 5', 3, 5), ('Blue 5', 3, 5), ('Blue 6', 3, 6), ('Blue 6', 3, 6), ('Blue 7', 3, 7), ('Blue 7', 3, 7),
     ('Blue 8', 3, 8), ('Blue 8', 3, 8), ('Blue 9', 3, 9), ('Blue 9', 3, 9)
 ]
+colours = ['red', 'green', 'yellow', 'blue']
 
 
 class Error(Exception):
@@ -91,6 +92,10 @@ class notInGameException(Error):
     """Raised when a command is run while not in game"""
     pass
 
+class alreadyInGameException(Error):
+    """Raised when a player tries to start a second lobby"""
+    pass
+
 
 bot = commands.Bot(command_prefix='!', description=description, case_insensitive=True)
 
@@ -111,13 +116,16 @@ async def lobby(ctx):
     try:
         global inLobby, playerIDs, playerNames
 
+        if inLobby or inGame:
+            raise alreadyInGameException
         inLobby = True
         playerIDs.append(ctx.message.author.id)
         playerNames.append(ctx.message.author.display_name)
         print('Trying to start game.')
         print('user ID ' + str(ctx.message.author.id) + ' added to players.')
-        await ctx.send(
-            '@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
+        await ctx.send('@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
+    except alreadyInGameException:
+        await ctx.send("There's already a lobby you bastard")
     except:
         pass
 
@@ -164,7 +172,7 @@ async def yeetlobby(ctx):
 @bot.command(pass_context=True)
 async def players(ctx):
     try:
-        if not inLobby:
+        if not inLobby or not inGame:
             raise noLobbyException
         print("Listing players.")
         await ctx.send("Players:")
@@ -211,9 +219,7 @@ async def start(ctx):
         lastCard = choice(startCards)
         await ctx.send('**First Card**:')
         await ctx.send(lastCard[0])
-        
-        while inGame:
-            await asyncio.sleep(1)
+
     except noLobbyException:
         print(ctx.message.author.display_name + ' tried starting a game without a lobby.')
         await ctx.send('No lobby created!')
@@ -225,13 +231,24 @@ async def start(ctx):
 @bot.command(pass_context=True)
 async def play(ctx, cardNo: int):
     try:
-        global decks, lastCard
+        global decks, lastCard, turn
         if decks[ctx.author.id][cardNo-1][1] == lastCard[1] or decks[ctx.author.id][cardNo-1][2] == lastCard[2] or decks[ctx.author.id][cardNo-1][1] == 4:
             await ctx.send('Card played: ' + decks[ctx.author.id][cardNo-1][0])
             lastCard = decks[ctx.author.id][cardNo-1]
+            del decks[ctx.author.id][cardNo-1]
         else:
             print('Card cannot be played.')
             await ctx.send('Try another card, basard')
+    except:
+        pass
+
+
+@bot.command(pass_context=True)
+async def draw(ctx):
+    try:
+        global decks
+        card = randCard()
+        decks[ctx.author.id].append[card]
     except:
         pass
 
