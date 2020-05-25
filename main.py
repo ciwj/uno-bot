@@ -295,24 +295,24 @@ async def play(ctx, cardNo: int):
                 await stopEverything(ctx)
 
             # Set card abilities
-            if decks[ctx.author.id][cardNo - 1][1] == 10:
+            if decks[ctx.author.id][cardNo - 1][2] == 10:
                 toDraw = 2
                 if isReverse:
                     turn -= 1
                 else:
                     turn += 1
-            elif decks[ctx.author.id][cardNo - 1][1] == 11:
+            elif decks[ctx.author.id][cardNo - 1][2] == 11:
                 if isReverse:
                     turn -= 2
                 else:
                     turn += 2
-            elif decks[ctx.author.id][cardNo - 1][1] == 12:
+            elif decks[ctx.author.id][cardNo - 1][2] == 12:
                 isReverse = not isReverse
                 if isReverse:
                     turn -= 1
                 else:
                     turn += 1
-            elif decks[ctx.author.id][cardNo - 1][1] == 14:
+            elif decks[ctx.author.id][cardNo - 1][2] == 14:
                 toDraw = 4
                 if isReverse:
                     turn -= 1
@@ -335,8 +335,8 @@ async def play(ctx, cardNo: int):
                     return innerCheck
 
                 msg = await bot.wait_for('message', check=check(ctx.author))
-                lastCard[2] = colours.index(msg.content.lower())
-                await ctx.send('Next card should now be: **' + str(colours[lastCard[2]]).capitalize() + '**')
+                lastCard[1] = colours.index(msg.content.lower())
+                await ctx.send('Next card should now be: **' + str(colours[lastCard[1]]).capitalize() + '**')
 
             # Check turns
             if turn < 0:
@@ -352,6 +352,14 @@ async def play(ctx, cardNo: int):
                 for x in range(toDraw):
                     card = randCard()
                     decks[playerIDs[turn]].append(card)
+                channel = bot.get_channel(channels[turn])
+                await channel.purge(limit=50)
+                msg = "**Your cards**:\n"
+                i = 1
+                for card in decks[playerIDs[turn]]:
+                    msg = msg + str(i) + ': ' + card[0] + '\n'
+                    i += 1
+                await channel.send(msg)
                 print(str(toDraw) + ' cards drawn for ' + str(playerIDs[turn]))
                 if isReverse:
                     turn -= 1
