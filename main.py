@@ -253,10 +253,10 @@ async def play(ctx, cardNo: int):
 @bot.command(pass_context=True)
 async def draw(ctx):
     try:
-        global decks
-        print(ctx.author.id + " is drawing a card")
+        global decks, channels, playerIDs
+        print(str(ctx.author.id) + " is drawing a card")
         card = randCard()
-        decks[ctx.author.id].append[card]
+        decks[ctx.author.id].append(card)
         playerNo = playerIDs.index(ctx.author.id)
         channel = bot.get_channel(channels[playerNo])
         await channel.purge(limit=50)
