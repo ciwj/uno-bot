@@ -147,7 +147,7 @@ async def displayCards(ctx):
 
 @bot.event
 async def on_ready():
-    print("-------------\nWe're in, bitches\n-------------\n")
+    print("-------------\nBot launched\n-------------\n")
 
 
 @bot.command(pass_context=True)
@@ -165,7 +165,7 @@ async def lobby(ctx):
         await ctx.send(
             '@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
     except alreadyInGameException:
-        await ctx.send("There's already a lobby you bastard")
+        await ctx.send("There's already a lobby!")
     except Exception as e:
         print(e)
 
@@ -378,9 +378,9 @@ async def play(ctx, cardNo: int):
 
         else:
             print('Card cannot be played.')
-            await ctx.send('Try another card, basard')
+            await ctx.send('Try another card!')
     except notTurnException:
-        await ctx.send("It's not your turn, greedy bitchard")
+        await ctx.send("It's not your turn!")
         print('Not correct turn.')
     except Exception as e:
         print(e)
@@ -397,7 +397,7 @@ async def draw(ctx):
         decks[ctx.author.id].append(card)
         await displayCards(ctx)
     except notTurnException:
-        await ctx.send("It's not your turn, greedy bitchard")
+        await ctx.send("It's not your turn!")
         print('Not correct turn.')
     except Exception as e:
         print(e)
