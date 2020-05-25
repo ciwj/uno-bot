@@ -207,14 +207,15 @@ async def start(ctx):
 
             # Deal cards
             channel = bot.get_channel(channels[i - 1])
-            await channel.send("**Your cards**:")
+            await channel.purge(limit=50)
 
+            await channel.send("**Your cards**:")
             await member.add_roles(role)
             decks[playerID] = []
             for x in range(7):
                 card = randCard()
                 decks[playerID].append(card)
-                await channel.send(card[0])
+                await channel.send(str(x + 1) +': ' + card[0])
         
         lastCard = choice(startCards)
         await ctx.send('**First Card**:')
@@ -241,8 +242,10 @@ async def play(ctx, cardNo: int):
             channel = bot.get_channel(channels[playerNo])
             await channel.purge(limit=50)
             await channel.send("**Your cards**:")
+            i = 1
             for card in decks[ctx.author.id]:
-                await channel.send(card[0])
+                await channel.send(str(i) +': ' + card[0])
+                i += 1
         else:
             print('Card cannot be played.')
             await ctx.send('Try another card, basard')
@@ -261,8 +264,10 @@ async def draw(ctx):
         channel = bot.get_channel(channels[playerNo])
         await channel.purge(limit=50)
         await channel.send("**Your cards**:")
+        i = 1
         for card in decks[ctx.author.id]:
-            await channel.send(card[0])
+            await channel.send(str(i) +': ' + card[0])
+            i += 1
     except:
         pass
 
