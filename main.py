@@ -147,7 +147,7 @@ async def displayCards(ctx):
 
 @bot.event
 async def on_ready():
-    print("-------------\nBot launched\n-------------\n")
+    print("-------------\nWe're in, bitches\n-------------\n")
 
 
 @bot.command(pass_context=True)
@@ -165,7 +165,7 @@ async def lobby(ctx):
         await ctx.send(
             '@here, **' + ctx.message.author.display_name + '** is trying to start a game, type !join to join!')
     except alreadyInGameException:
-        await ctx.send("There's already a lobby!")
+        await ctx.send("There's already a lobby you bastard")
     except Exception as e:
         print(e)
 
@@ -283,17 +283,6 @@ async def play(ctx, cardNo: int):
             await ctx.send('Card played: ' + decks[ctx.author.id][cardNo - 1][0])
             lastCard = decks[ctx.author.id][cardNo - 1]
 
-            # Check win condition
-            if len(decks[ctx.author.id]) == 0:
-                member = ctx.author
-                role = get(member.guild.roles, name="Uno God")
-                last_member = role.members[0]
-                await last_member.remove_roles(role)
-                await member.add_roles(role)
-                await ctx.send('**' + str(ctx.author) + ' is the supreme uno God!**')
-                await ctx.send('Type !lobby to start another game.')
-                await stopEverything(ctx)
-
             # Set card abilities
             if decks[ctx.author.id][cardNo - 1][2] == 10:
                 toDraw = 2
@@ -346,6 +335,17 @@ async def play(ctx, cardNo: int):
 
             del decks[ctx.author.id][cardNo - 1]
             await displayCards(ctx)
+            
+            # Check win condition
+            if len(decks[ctx.author.id]) == 0:
+                member = ctx.author
+                role = get(member.guild.roles, name="Uno God")
+                last_member = role.members[0]
+                await last_member.remove_roles(role)
+                await member.add_roles(role)
+                await ctx.send('**' + str(ctx.author) + ' got the winner winner chicken dinner and is the uno God!**')
+                await ctx.send('Type !lobby to start another game.')
+                await stopEverything(ctx)
 
             # Draw cards
             if toDraw != 0:
@@ -378,9 +378,9 @@ async def play(ctx, cardNo: int):
 
         else:
             print('Card cannot be played.')
-            await ctx.send('Try another card!')
+            await ctx.send('Try another card, basard')
     except notTurnException:
-        await ctx.send("It's not your turn!")
+        await ctx.send("It's not your turn, greedy bitchard")
         print('Not correct turn.')
     except Exception as e:
         print(e)
@@ -397,7 +397,7 @@ async def draw(ctx):
         decks[ctx.author.id].append(card)
         await displayCards(ctx)
     except notTurnException:
-        await ctx.send("It's not your turn!")
+        await ctx.send("It's not your turn, greedy bitchard")
         print('Not correct turn.')
     except Exception as e:
         print(e)
